@@ -1,0 +1,83 @@
+---
+- name: Update APT cache
+  apt:
+    update_cache: yes
+  tags:
+    - bootstrap
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+  tags:
+    - bootstrap
+
+- name: Install prerequisite packages
+  apt:
+    pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg-agent
+      - software-properties-common
+      - git
+    state: latest
+  tags:
+    - bootstrap
+
+- name: Add Docker’s official GPG key
+  apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+    state: present
+  tags:
+    - bootstrap
+
+- name: Set up the stable repository
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
+    state: present
+  tags:
+    - bootstrap
+
+- name: Install Docker Engine and Docker Compose plugin
+  apt:
+    pkg:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: latest
+  tags:
+    - bootstrap
+
+- name: Ensure Docker service is running
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  tags:
+    - bootstrap
+
+- name: Ensure "{{ fs_location }}" folder exists
+  file:
+    path: "{{ fs_location }}"
+    state: directory
+    mode: '0755'
+    owner: "root"
+    group: "root"
+  tags:
+    - bootstrap
+
+- name: Inject docker-compose.yml
+  template:
+    src: docker-compose.yaml.j2
+    dest: "{{ fs_location }}/docker-compose.yaml"
+  tags:
+    - bootstrap
+
+- name: Inject peers
+  copy:
+    src: env-peers
+    dest: "{{ fs_location }}/env-peers"
+  tags:
+    - bootstrap

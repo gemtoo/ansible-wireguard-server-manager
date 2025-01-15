@@ -1,0 +1,85 @@
+---
+# - name: Tear down current Docker Compose stack
+#   community.docker.docker_compose_v2:
+#     project_src: "{{ fs_location }}"
+#     state: absent
+#   tags:
+#     - run
+
+- name: Inject docker-compose.yml
+  template:
+    src: docker-compose.yaml.j2
+    dest: "{{ fs_location }}/docker-compose.yaml"
+  tags:
+    - run
+
+- name: Inject peers
+  copy:
+    src: env-peers
+    dest: "{{ fs_location }}/env-peers"
+  tags:
+    - run
+
+- name: Check if "config/{{ ansible_host }}" folder exists locally
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "config/{{ ansible_host }}"
+  register: lcfg
+  tags:
+    - run
+
+# - name: Read env file
+#   delegate_to: localhost
+#   become: false
+#   set_fact:
+#     csv_values: "{{ lookup('file', 'env-peers') }}"
+#   tags:
+#     - debug
+# 
+# - name: Parse CSV from file
+#   set_fact:
+#     parsed_peers: "{{ csv_values.split('=')[1].split(',') }}"
+#   tags:
+#     - debug
+# 
+# - name: Ensure user-configs folder for each peer exists
+#   delegate_to: localhost
+#   become: false
+#   file:
+#     path: "user-configs/{{ item }}"
+#     state: directory
+#   with_items: "{{ parsed_peers }}"
+#   tags:
+#     - debug
+
+- name: Create "config/{{ ansible_host }}" if it doesn't exist
+  delegate_to: localhost
+  become: false
+  file:
+    path: "config/{{ ansible_host }}"
+    state: directory
+  when: not lcfg.stat.exists
+  tags:
+    - run
+
+- name: Pull, build, and start the Docker Compose stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ fs_location }}"
+    pull: always
+    build: always
+    recreate: always
+    state: present
+  tags:
+    - run
+
+ 
+- name: Synchronize the config directory from remote to source
+  synchronize:
+    src: "{{ fs_location }}/config/"
+    dest: "config/{{ ansible_host }}/"
+    mode: pull
+    recursive: yes
+    delete: true
+  tags:
+    - run

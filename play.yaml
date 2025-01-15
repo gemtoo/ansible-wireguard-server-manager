@@ -1,0 +1,18 @@
+---
+- name: WireGuard VPN setup
+  hosts: wireguard_servers
+  become: yes
+  vars:
+    fs_location: "/opt/wireguard-server"
+
+  tasks:
+  - name: Bootstrap the server
+    include_tasks: sub-playbooks/bootstrap.yaml
+    tags:
+      - bootstrap
+
+  - name: Build & run
+    include_tasks: sub-playbooks/run.yaml
+    tags:
+      - run
+      - debug
